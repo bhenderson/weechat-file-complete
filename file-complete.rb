@@ -1,7 +1,5 @@
 require 'weechat'
 include Weechat
-include Script::Skeleton
-include Weechat::Helper
 
 @script = {
   name: "file-complete",
@@ -23,7 +21,17 @@ def setup
     end
   end
 
-  Weechat.hook_completion @script[:name], "Add completions from a file", "complete", ""
+  Hooks::Completion.hook @script[:name], "Add completions from a file" do |buffer, completions|
+    next unless @config.enabled
+
+    read_files do |line|
+      line.sub! /#.*/, ""
+      line.strip!
+      completions.add(line, false, :sort)
+    end
+  end
+
+  Core.puts "Remember to add %(#{@script[:name]}) to weechat.completion.default_template"
 end
 
 def read_files
@@ -34,18 +42,6 @@ def read_files
         line.chomp!
         yield line
       end
-    end
-  end
-end
-
-def complete(data, completion_name, buffer, completion)
-  Utilities.evaluate_call do
-    next unless @config.enabled
-
-    read_files do |line|
-      line.sub! /#.*/, ""
-      line.strip!
-      Weechat.hook_completion_list_add(completion, line, 0, Weechat::WEECHAT_LIST_POS_SORT)
     end
   end
 end
